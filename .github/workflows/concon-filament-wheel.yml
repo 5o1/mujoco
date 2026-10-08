@@ -20,6 +20,7 @@ jobs:
         -DCMAKE_CXX_COMPILER:STRING=g++-14
         -DCMAKE_EXE_LINKER_FLAGS:STRING=-Wl,--no-as-needed
         -DUSE_STATIC_LIBCXX:BOOL=ON
+        -DFETCHCONTENT_SOURCE_DIR_EIGEN3:PATH=/tmp/eigen-source
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -41,6 +42,22 @@ jobs:
       - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39
         with:
           enable-cache: true
+
+      - name: Prepare pinned Eigen source
+        run: |
+          curl --fail --location --retry 3 \
+            https://gitlab.com/libeigen/eigen/-/archive/087757ad50159b5bd86ab73e4df34e6b4ea74258/eigen-087757ad50159b5bd86ab73e4df34e6b4ea74258.tar.gz \
+            --output /tmp/eigen.tar.gz
+          echo "78634dfdb9ddfcd1fd1f4323d877b00e46d105949c4496607411aa404170c687  /tmp/eigen.tar.gz" \
+            | sha256sum --check
+          mkdir -p /tmp/eigen-source
+          tar -xzf /tmp/eigen.tar.gz --strip-components=1 -C /tmp/eigen-source
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03
+        with:
+          key: concon-ubuntu22-gcc14-filament
+          max-size: "500M"
 
       - name: Prepare Python build environment
         run: |
