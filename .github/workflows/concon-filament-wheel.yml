@@ -79,6 +79,7 @@ jobs:
         run: |
           source "${TMPDIR}/venv/bin/activate"
           mkdir -p python/wheelhouse
+          export LD_LIBRARY_PATH="${GITHUB_WORKSPACE}/build/mujoco_install/lib:${LD_LIBRARY_PATH:-}"
           auditwheel repair \
             --plat manylinux_2_35_x86_64 \
             --wheel-dir python/wheelhouse \
