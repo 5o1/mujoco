@@ -52,9 +52,20 @@ jobs:
           source "${TMPDIR}/venv/bin/activate"
           bash .github/workflows/build_steps.sh build_studio_python
 
-      - name: Verify wheel contains Filament modules
+      - name: Vendor compiler runtime into wheel
         run: |
           source "${TMPDIR}/venv/bin/activate"
+          mkdir -p python/wheelhouse
+          auditwheel repair \
+            --plat manylinux_2_35_x86_64 \
+            --wheel-dir python/wheelhouse \
+            python/dist/mujoco-*.whl
+          auditwheel show python/wheelhouse/mujoco-*.whl
+
+      - name: Verify repaired wheel contains Filament modules
+        run: |
+          source "${TMPDIR}/venv/bin/activate"
+          pip install --force-reinstall --no-deps python/wheelhouse/mujoco-*.whl
           python - <<'PY'
           import mujoco
           import mujoco._render_filament
@@ -67,6 +78,6 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: mujoco-3.15.0-concon-opacity-cp312-linux
-          path: python/dist/mujoco-*.whl
+          path: python/wheelhouse/mujoco-*.whl
           if-no-files-found: error
           compression-level: 0
