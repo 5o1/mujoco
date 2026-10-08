@@ -16,8 +16,8 @@ jobs:
       TMPDIR: /tmp/mujoco-build
       CMAKE_ARGS: >-
         -G Ninja
-        -DCMAKE_C_COMPILER:STRING=clang-15
-        -DCMAKE_CXX_COMPILER:STRING=clang++-15
+        -DCMAKE_C_COMPILER:STRING=clang-18
+        -DCMAKE_CXX_COMPILER:STRING=clang++-18
         -DFETCHCONTENT_SOURCE_DIR_EIGEN:PATH=/tmp/eigen-source
         -DFETCHCONTENT_SOURCE_DIR_EIGEN3:PATH=/tmp/eigen-source
     steps:
@@ -25,10 +25,17 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Verify Clang 15 toolchain
+      - name: Install pinned Clang 18 toolchain
         run: |
-          clang-15 --version
-          clang++-15 --version
+          curl --fail --location --retry 3 \
+            https://apt.llvm.org/llvm.sh \
+            --output /tmp/llvm.sh
+          echo "03878e08f47b66cc95bc4b544b0db3c6d9ce8d60e6cf2492ae357984330a9eae  /tmp/llvm.sh" \
+            | sha256sum --check
+          chmod +x /tmp/llvm.sh
+          sudo /tmp/llvm.sh 18
+          clang-18 --version
+          clang++-18 --version
 
       - name: Prepare Linux build dependencies
         run: bash .github/workflows/build_steps.sh prepare_linux
@@ -54,7 +61,7 @@ jobs:
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03
         with:
-          key: concon-ubuntu22-clang15-filament
+          key: concon-ubuntu22-clang18-filament
           max-size: "500M"
 
       - name: Prepare Python build environment
