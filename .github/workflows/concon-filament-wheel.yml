@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   linux-cp312:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     env:
       TMPDIR: /tmp/mujoco-build
       CMAKE_ARGS: >-
@@ -19,10 +19,17 @@ jobs:
         -DCMAKE_C_COMPILER:STRING=gcc-14
         -DCMAKE_CXX_COMPILER:STRING=g++-14
         -DCMAKE_EXE_LINKER_FLAGS:STRING=-Wl,--no-as-needed
+        -DUSE_STATIC_LIBCXX:BOOL=ON
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
+
+      - name: Install GCC 14
+        run: |
+          sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test
+          sudo apt-get update
+          sudo apt-get install --yes gcc-14 g++-14
 
       - name: Prepare Linux build dependencies
         run: bash .github/workflows/build_steps.sh prepare_linux
