@@ -784,6 +784,7 @@ mjrfMaterial ModelRenderables::GetMaterial(mjtObj obj_type, int obj_index,
       return tex_id >= 0 ? model_objects_->GetTexture(tex_id) : nullptr;
     };
     material.color_texture = get_texture(mjTEXROLE_RGB);
+    material.opacity_texture = get_texture(mjTEXROLE_OPACITY);
     material.normal_texture = get_texture(mjTEXROLE_NORMAL);
     material.emissive_texture = get_texture(mjTEXROLE_EMISSIVE);
     material.orm_texture = get_texture(mjTEXROLE_ORM);
