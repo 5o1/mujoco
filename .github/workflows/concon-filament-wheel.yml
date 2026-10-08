@@ -1,0 +1,65 @@
+name: concon-filament-wheel
+
+on:
+  push:
+    branches:
+      - concon/filament-opacity-texture
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-cp312:
+    runs-on: ubuntu-24.04
+    env:
+      TMPDIR: /tmp/mujoco-build
+      CMAKE_ARGS: >-
+        -G Ninja
+        -DCMAKE_C_COMPILER:STRING=gcc-14
+        -DCMAKE_CXX_COMPILER:STRING=g++-14
+        -DCMAKE_EXE_LINKER_FLAGS:STRING=-Wl,--no-as-needed
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+
+      - name: Prepare Linux build dependencies
+        run: bash .github/workflows/build_steps.sh prepare_linux
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39
+        with:
+          enable-cache: true
+
+      - name: Prepare Python build environment
+        run: |
+          mkdir -p "${TMPDIR}"
+          bash .github/workflows/build_steps.sh prepare_python
+
+      - name: Build patched Studio/Filament wheel
+        run: |
+          source "${TMPDIR}/venv/bin/activate"
+          bash .github/workflows/build_steps.sh build_studio_python
+
+      - name: Verify wheel contains Filament modules
+        run: |
+          source "${TMPDIR}/venv/bin/activate"
+          python - <<'PY'
+          import mujoco
+          import mujoco._render_filament
+          from mujoco.rendering.filament import renderer
+
+          print(mujoco.__version__)
+          print(renderer.__file__)
+          PY
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: mujoco-3.15.0-concon-opacity-cp312-linux
+          path: python/dist/mujoco-*.whl
+          if-no-files-found: error
+          compression-level: 0
