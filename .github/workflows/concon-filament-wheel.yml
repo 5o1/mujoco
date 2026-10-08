@@ -16,8 +16,8 @@ jobs:
       TMPDIR: /tmp/mujoco-build
       CMAKE_ARGS: >-
         -G Ninja
-        -DCMAKE_C_COMPILER:STRING=gcc-14
-        -DCMAKE_CXX_COMPILER:STRING=g++-14
+        -DCMAKE_C_COMPILER:STRING=gcc-12
+        -DCMAKE_CXX_COMPILER:STRING=g++-12
         -DCMAKE_EXE_LINKER_FLAGS:STRING=-Wl,--no-as-needed
         -DUSE_STATIC_LIBCXX:BOOL=ON
         -DFETCHCONTENT_SOURCE_DIR_EIGEN:PATH=/tmp/eigen-source
@@ -27,11 +27,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install GCC 14
+      - name: Install GCC 12
         run: |
-          sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test
           sudo apt-get update
-          sudo apt-get install --yes gcc-14 g++-14
+          sudo apt-get install --yes gcc-12 g++-12
 
       - name: Prepare Linux build dependencies
         run: bash .github/workflows/build_steps.sh prepare_linux
@@ -57,7 +56,7 @@ jobs:
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03
         with:
-          key: concon-ubuntu22-gcc14-filament
+          key: concon-ubuntu22-gcc12-filament
           max-size: "500M"
 
       - name: Prepare Python build environment
