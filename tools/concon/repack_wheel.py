@@ -44,7 +44,7 @@ def main():
         'upstream_patch_commit': '89733a51f207c7fedafc855d22ffd4c38caa793a',
         'library_sha256': hashlib.sha256(binary).hexdigest(),
         'official_wheel_sha256': hashlib.sha256(args.official_wheel.read_bytes()).hexdigest(),
-        'packaging': 'Official CPython bindings and plugins, locally rebuilt ABI-compatible engine. Linux x86_64 only; no manylinux claim.',
+        'packaging': 'Official CPython bindings and plugins, locally rebuilt engine. Binding/library compatibility is not established; see CONCON_PATCHES.md. Linux x86_64 only; no manylinux claim.',
     }
     entries = {}
     with zipfile.ZipFile(args.official_wheel) as wheel:
