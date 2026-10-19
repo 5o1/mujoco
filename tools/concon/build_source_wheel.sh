@@ -31,11 +31,11 @@ record={'distribution_version':os.environ['CONCON_WHEEL_VERSION'],
         'source_repository':'https://github.com/5o1/mujoco',
         'python':sys.version,'github_run_url':f'https://github.com/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{os.environ["GITHUB_RUN_ID"]}',
         'packaging':'Engine, plugins, generated headers and Python extensions built from this same source checkout. No binary replacement or repacking.',
-        'compiler':'Ubuntu 22.04 default GCC; Release, double precision; upstream CI LTO-off policy.'}
+        'compiler':'Ubuntu 22.04 default GCC; Release, double precision; native default LTO on, Python binding LTO off.'}
 (root/'python/mujoco/CONCON_BUILD.json').write_text(json.dumps(record,indent=2)+'\n')
 PY
 cmake -S "$source_dir" -B "$output_dir/native" -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF \
+  -DCMAKE_BUILD_TYPE=Release -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
   -DMUJOCO_BUILD_EXAMPLES=OFF -DMUJOCO_BUILD_SIMULATE=OFF \
   -DMUJOCO_BUILD_TESTS=ON -DMUJOCO_TEST_PYTHON_UTIL=OFF \
   -DCMAKE_INSTALL_PREFIX="$output_dir/install"
