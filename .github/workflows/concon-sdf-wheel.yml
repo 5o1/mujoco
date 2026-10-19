@@ -1,0 +1,56 @@
+name: ConCon SDF wheels
+on:
+  push:
+    branches: [concon/3.16.0-sdf-sign-pr3689]
+    paths:
+      - .github/workflows/concon-sdf-wheel.yml
+      - tools/concon/build_source_wheel.sh
+      - tools/concon/source_wheel_smoke.py
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  wheel:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {variant: patched, python: '3.10'}
+          - {variant: patched, python: '3.11'}
+          - {variant: patched, python: '3.12'}
+          - {variant: control, python: '3.12'}
+    name: ${{ matrix.variant }} / Python ${{ matrix.python }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          path: driver
+          persist-credentials: false
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          path: source
+          ref: ${{ matrix.variant == 'control' && 'a892750516336d8358949f4518fcc4fbbd85beae' || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libgl1-mesa-dev libxinerama-dev libxcursor-dev libxrandr-dev libxi-dev libwayland-dev libxkbcommon-dev
+      - name: Build matching engine, plugins and Python bindings
+        env:
+          VARIANT: ${{ matrix.variant }}
+        run: bash driver/tools/concon/build_source_wheel.sh source output
+      - name: Upload wheel and validation records
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: concon-${{ matrix.variant }}-py${{ matrix.python }}
+          path: |
+            output/wheels/
+            output/*.log
+            output/*.json
+            output/requirements.txt
+          retention-days: 30
