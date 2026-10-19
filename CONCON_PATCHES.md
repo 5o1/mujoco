@@ -3,24 +3,25 @@
 Maintenance branch: `concon/3.16.0-sdf-sign-pr3689` in
 [5o1/mujoco](https://github.com/5o1/mujoco).
 
-## Integration status: blocked (2026-10-19)
+## Integration status (2026-10-19)
 
-The SDF correction passes the independent tetrahedron reproducer (1,248 wrong
-exterior leaf-corner signs before, zero after) and upstream `user_objects_test`
-(103 passed) and `user_mesh_test` (84 passed). The four archived gamepad shell
-queries also have zero wrong-sign corners after recompilation. The full gamepad
-passes the one-second, fixed-root K2b rest check with neutral channels and no
-warnings; preload still causes documented soft joint-limit penetration.
+The adopted method builds the engine, plugins and Python bindings together in
+[Actions run 39195476197](https://github.com/5o1/mujoco/actions/runs/39195476197),
+from source commit `ac1bfe32700667d98b0eea412900beef5d98cbc2`.
+The Python 3.12 source-built wheel passes the force-actuator model compilation
+that previously segfaulted and the gamepad project's full local fast regression:
+324 unittest cases (268 passed, 56 skipped), 20 backend tests and 35 Node tests.
 
-**Do not deploy the repacked wheel yet.** Combining the locally rebuilt engine
-with the official Python wheel caused a native segmentation fault in the
-gamepad acceptance model compilation on both the local machine and the isolated
-validation node. The same local acceptance test passes after reinstalling the
-official wheel. Integration stopped at this gate; LB/RB contact runs did not complete. The local
-project environment was rolled back to official 3.16.0. No production-readiness
-or Python-binding binary compatibility claim is made. The next investigation
-should distinguish a native build/toolchain difference from binding/library
-incompatibility and a defect in the patch itself.
+The upstream control reproduces 1,248 exterior-negative tetrahedron corner
+records, while the patched build has zero. Both control and patched source
+builds compile and step the same force-driven free sphere successfully. The
+patched build also passes 103 `user_objects_test` cases, 84 `user_mesh_test`
+cases and 80 Python `specs_test` cases (plus 9 subtests).
+
+The previous mixed-binary candidate `.1` is rejected. Its exact crash cause has
+not been isolated; successful same-source builds establish a working packaging
+method, not proof of a particular ABI defect. Full gamepad acceptance is tracked
+separately in the gamepad project, including contact and visual gates.
 
 ## SDF sign correction
 
@@ -38,46 +39,44 @@ normals for edges and angle-weighted incident normals for vertices. Unsigned
 distance and the runtime contact solver remain unchanged. No gamepad mesh,
 physical parameter, contact policy, timestep, or acceptance fixture is changed.
 
-## Candidate build and packaging recipe (integration currently blocked)
+## GitHub Actions source builds
 
-Use the normal upstream CMake dependency pins. Network access in the ConCon
-workspace must use real-IP direct connections first. Set the environment's
-`LD_LIBRARY_PATH` to its `lib` directory when the official Python extensions need
-the conda C++ runtime.
+Workflow: `.github/workflows/concon-sdf-wheel.yml`, named **ConCon SDF wheels**.
+It builds the engine, plugins, generated binding sources and Python extensions
+from the same checkout. No official binary wheel is repacked. The matrix builds
+patched CPython 3.10/3.11/3.12 wheels and an unpatched 3.16.0 CPython 3.12 control.
+The control uses release commit `a892750516336d8358949f4518fcc4fbbd85beae`.
 
-```sh
-cmake -S . -B build/concon -G Ninja -DCMAKE_BUILD_TYPE=Release \
-  -DMUJOCO_BUILD_EXAMPLES=OFF -DMUJOCO_BUILD_SIMULATE=OFF \
-  -DMUJOCO_BUILD_TESTS=ON -DMUJOCO_TEST_PYTHON_UTIL=OFF
-cmake --build build/concon --target mujoco user_objects_test user_mesh_test -j 4
-(cd test && ../build/concon/bin/user_objects_test && ../build/concon/bin/user_mesh_test)
-python -m pip download --only-binary=:all: --no-deps -d wheelhouse mujoco==3.16.0
-python tools/concon/repack_wheel.py \
-  --official-wheel wheelhouse/mujoco-3.16.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl \
-  --library build/concon/lib/libmujoco.so.3.16.0 --output-dir wheelhouse
-python -m pip install --no-deps --force-reinstall \
-  wheelhouse/mujoco-3.16.0+concon.sdf3689.1-cp312-cp312-linux_x86_64.whl
-```
+The Linux runner uses Ubuntu 22.04 GCC, Release and double precision. The native
+library retains its default LTO setting; Python extensions use the upstream CI
+LTO-off setting. Native LTO-off failed in both control and patched builds because
+GCC 11 promoted an upstream `mjc_BoxBox` uninitialized-variable warning to an
+error. This was addressed by restoring native default LTO, without changing
+collision code or suppressing warnings.
 
-The local wheel retains the official 3.16.0 Python bindings and plugins, replacing
-only the engine library. Compatibility with the official Python binaries remains
-unverified because model compilation crashed during integration. It is tagged `linux_x86_64`, without a
-manylinux portability claim. Distribution metadata reports
-`3.16.0+concon.sdf3689.1`; `mujoco.__version__` and `mj_versionString()` still report
-the native API version `3.16.0`. `mujoco/CONCON_PATCH.json` records source commits,
-upstream wheel hash and installed library hash. All meshes must be recompiled;
-old `.mjb` files still contain their previously generated SDF coefficients.
-
-Inspect the installed variant with:
+Builds run on pushes affecting the workflow or its two driver scripts. Use `gh`
+to inspect, rerun, and download a completed build:
 
 ```sh
-python -c 'import importlib.metadata; print(importlib.metadata.version("mujoco"))'
-python -c 'import mujoco,pathlib; print((pathlib.Path(mujoco.__file__).parent/"CONCON_PATCH.json").read_text())'
+gh run list --repo 5o1/mujoco --workflow concon-sdf-wheel.yml \
+  --branch concon/3.16.0-sdf-sign-pr3689
+gh run view RUN_ID --repo 5o1/mujoco
+gh run rerun RUN_ID --repo 5o1/mujoco
+gh run download RUN_ID --repo 5o1/mujoco \
+  --name concon-patched-py3.12 --dir wheelhouse
+python -m pip install --no-deps --force-reinstall wheelhouse/wheels/*.whl
 ```
 
-To roll back, reinstall the retained official wheel with `--no-deps
---force-reinstall`, then recompile models. This affects the selected Python
-environment only.
+Only use a build that completed successfully and passed the project's local
+checks. Actions artifacts are retained for 30 days; keep adopted wheels in the
+project's archive. The source-build distribution is
+`3.16.0+concon.sdf3689.2`; its `mujoco/CONCON_BUILD.json` identifies the exact source
+commit and Actions run. Native API strings still report `3.16.0`. The wheels are
+Linux x86_64 builds, without a manylinux portability claim. Existing `.mjb` files
+must be recompiled to replace previously generated SDF coefficients.
+
+The previous binary-replacement candidate `3.16.0+concon.sdf3689.1` failed
+integration and must not be installed. Its build history is retained in Git.
 
 ## Validation record
 
